@@ -1,0 +1,16 @@
+# 보안 위험 파일 막기
+.env
+*.user
+*.suo
+.VSCode/
+.idea/
+
+# 로컬 빌드 결과물 막기 (Docker 안에서 새로 빌드함)
+bin/
+obj/
+
+# 소스 코드 관리 파일 막기
+.git/
+.gitignore
+README.md
+LICENSE

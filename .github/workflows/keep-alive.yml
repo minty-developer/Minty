@@ -1,0 +1,16 @@
+name: Keep Render Alive
+
+on:
+  schedule:
+    # UTC 기준 매 10분마다 실행 (GitHub 크론은 UTC 기준이라 한국 시간보다 9시간 느림)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # 수동으로도 테스트 실행 가능
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Web Service
+        run: |
+          # https://여기에-너의-render-웹서비스-주소.onrender.com/ (끝에 API 경로를 넣거나 루트에 Health Check용 엔드포인트가 있다면 거기로 핑)
+          curl -I https://YOUR-RENDER-APP-NAME.onrender.com/health
