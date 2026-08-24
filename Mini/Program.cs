@@ -29,6 +29,14 @@ builder.Services.AddSingleton(options => new DiscordSocketConfig
     GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent,
     LogLevel = LogSeverity.Info
 });
+builder.Services.AddSingleton(static options => new DiscordSocketConfig
+{
+    GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent,
+    LogLevel = LogSeverity.Info,
+    
+    // 게이트웨이 재연결 간격 확보
+    MessageCacheSize = 50
+});
 builder.Services.AddSingleton<DiscordSocketClient>();
 builder.Services.AddSingleton(provider => 
     new InteractionService(provider.GetRequiredService<DiscordSocketClient>()));

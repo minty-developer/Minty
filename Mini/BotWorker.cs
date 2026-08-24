@@ -31,10 +31,8 @@ public partial class BotWorker : IHostedService
             _client.Log += LogAsync;
             _commands.Log += LogAsync;
             _client.Ready += ReadyAsync;
-
             _client.MessageReceived += HandleAdminReplyAsync;
 
-            // 슬래시 명령어 및 버튼 클릭(ComponentInteraction) 처리
             _client.InteractionCreated += async interaction =>
             {
                 if (interaction is SocketMessageComponent componentInteraction)
@@ -51,7 +49,7 @@ public partial class BotWorker : IHostedService
             var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN") ?? _configuration["Discord:Token"];
             if (string.IsNullOrEmpty(token))
             {
-                _logger.LogError("디스코드 봇 토큰이 설정되지 않았습니다. Environment Variables 또는 appsettings.json을 확인해 주세요.");
+                _logger.LogError("디스코드 봇 토큰이 설정되지 않았습니다.");
                 return;
             }
 
@@ -60,6 +58,10 @@ public partial class BotWorker : IHostedService
 
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
         } 
+        catch (Discord.Net.HttpException ex) when ((int)ex.HttpCode == 429)
+        {
+            _logger.LogError(ex, "디스코드 API Rate Limit에 도달했습니다. 일정 시간 후 재시도해야 합니다.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "봇을 시작하는 중 오류가 발생했습니다.");
