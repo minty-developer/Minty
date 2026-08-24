@@ -20,8 +20,7 @@ public class WebhookController(DiscordSocketClient client, ILogger<WebhookContro
         _logger.LogInformation($"외부 웹훅 수신됨 (대상 채널: {payload.ChannelId}): {payload.Message}");
 
         // 클라이언트에서 지정해 준 채널 ID로 봇이 찾아가서 메시지 전송
-        var channel = _client.GetChannel(payload.ChannelId) as ISocketMessageChannel;
-        if (channel == null)
+        if (_client.GetChannel(payload.ChannelId) is not ISocketMessageChannel channel)
         {
             return NotFound($"ID가 {payload.ChannelId}인 채널을 찾을 수 없거나 봇이 접근할 수 없습니다.");
         }

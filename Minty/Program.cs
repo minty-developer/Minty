@@ -12,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 // 2. Discord.Net 클라이언트 설정 및 DI 등록
-builder.Services.AddSingleton<DiscordSocketConfig>(options => new DiscordSocketConfig
+builder.Services.AddSingleton(options => new DiscordSocketConfig
 {
     GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent,
     LogLevel = LogSeverity.Info

@@ -90,12 +90,13 @@ public partial class BotWorker : IHostedService
 
         try
         {
-            string guildIdStr = Environment.GetEnvironmentVariable("TEST_GUILD_ID") ?? "0";
-            if (ulong.TryParse(guildIdStr, out ulong testGuildId) && testGuildId != 0)
-            {
-                await _commands.RegisterCommandsToGuildAsync(testGuildId);
-                _logger.LogInformation("테스트 서버에 슬러시 명령어를 성공적으로 등록했습니다!");
-            }
+            // string guildIdStr = Environment.GetEnvironmentVariable("TEST_GUILD_ID") ?? "0";
+            // if (ulong.TryParse(guildIdStr, out ulong testGuildId) && testGuildId != 0)
+            // {
+            //     await _commands.RegisterCommandsToGuildAsync(testGuildId);
+            //     _logger.LogInformation("테스트 서버에 슬러시 명령어를 성공적으로 등록했습니다!");
+            // }
+            await _commands.RegisterCommandsGloballyAsync();
         }
         catch (Exception ex)
         {
