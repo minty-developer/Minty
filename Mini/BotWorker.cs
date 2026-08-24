@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using System.Reflection;
+using System.Collections.Concurrent;
 
 public partial class BotWorker : IHostedService
 {
@@ -33,12 +34,11 @@ public partial class BotWorker : IHostedService
 
             _client.MessageReceived += HandleAdminReplyAsync;
 
-            // 슬러시 명령어 및 버튼 클릭(ComponentInteraction) 처리
+            // 슬래시 명령어 및 버튼 클릭(ComponentInteraction) 처리
             _client.InteractionCreated += async interaction =>
             {
                 if (interaction is SocketMessageComponent componentInteraction)
                 {
-                    // [답변 확인하기] 버튼을 누른 경우 처리
                     await HandleButtonInteractionAsync(componentInteraction);
                 }
                 else
@@ -51,7 +51,7 @@ public partial class BotWorker : IHostedService
             var token = Environment.GetEnvironmentVariable("DISCORD_TOKEN") ?? _configuration["Discord:Token"];
             if (string.IsNullOrEmpty(token))
             {
-                _logger.LogError("디스코드 봇 토큰이 설정되지 않았습니다. .env 파일이나 appsettings.json을 확인해주세요.");
+                _logger.LogError("디스코드 봇 토큰이 설정되지 않았습니다. Environment Variables 또는 appsettings.json을 확인해 주세요.");
                 return;
             }
 
@@ -90,17 +90,12 @@ public partial class BotWorker : IHostedService
 
         try
         {
-            // string guildIdStr = Environment.GetEnvironmentVariable("TEST_GUILD_ID") ?? "0";
-            // if (ulong.TryParse(guildIdStr, out ulong testGuildId) && testGuildId != 0)
-            // {
-            //     await _commands.RegisterCommandsToGuildAsync(testGuildId);
-            //     _logger.LogInformation("테스트 서버에 슬러시 명령어를 성공적으로 등록했습니다!");
-            // }
             await _commands.RegisterCommandsGloballyAsync();
+            _logger.LogInformation("글로벌 슬래시 커맨드가 성공적으로 등록되었습니다.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "슬러시 명령어 등록 중 오류가 발생했습니다.");
+            _logger.LogError(ex, "슬래시 명령어 등록 중 오류가 발생했습니다.");
         }
     }
 
@@ -108,7 +103,7 @@ public partial class BotWorker : IHostedService
     {
         if (rawMessage.Author.Id == _client.CurrentUser.Id) return;
 
-        string adminIdStr = Environment.GetEnvironmentVariable("ADMIN_USER_ID") ?? "0";
+        string adminIdStr = Environment.GetEnvironmentVariable("ADMIN_USER_ID") ?? _configuration["AdminUserId"] ?? "0";
         if (!ulong.TryParse(adminIdStr, out ulong adminUserId) || adminUserId == 0) return;
 
         if (rawMessage.Author.Id != adminUserId) return;
@@ -143,14 +138,10 @@ public partial class BotWorker : IHostedService
 
                     if (targetChannel != null)
                     {
-                        // CustomId에 원본 질문과 관리자 답변을 임시 저장하는 버튼 컴포넌트 생성
-                        // (구분자 '|' 사용, 너무 길면 데이터베이스/인메모리 저장 권장)
                         string originalQuestion = embed.Description ?? "내용 없음";
                         string adminAnswer = rawMessage.Content;
 
-                        // 버튼 CustomId 생성: reply_read:{targetUserId}:{msgId}
-                        // 디스코드 CustomId 길이에 한계가 있으므로, 질문과 답변 데이터는 보안 및 안전성을 위해 깔끔하게 임베드로 구성 후 버튼에 바인딩
-                        var builder = new ComponentBuilder()
+                        var buttonBuilder = new ComponentBuilder()
                             .WithButton("💬 답변 확인하기", $"btn_reply_{targetUserId}", ButtonStyle.Primary);
 
                         var noticeEmbed = new EmbedBuilder()
@@ -160,11 +151,9 @@ public partial class BotWorker : IHostedService
                             .WithCurrentTimestamp()
                             .Build();
 
-                        // A채널에 버튼과 함께 메시지 띄우기 (공개적으로 남겨두기)
-                        var sentMsg = await targetChannel.SendMessageAsync(embed: noticeEmbed, components: builder.Build());
+                        var sentMsg = await targetChannel.SendMessageAsync(embed: noticeEmbed, components: buttonBuilder.Build());
 
-                        // 원본 질문과 답변을 안전하게 파싱할 수 있도록 메모리나 매핑용 데이터 세팅 가능
-                        // 간단하게 데이터를 보관하기 위해 봇에 메모리 딕셔너리를 둘 수 있습니다.
+                        // 캐시에 안전하게 보관
                         ReplyCache.Store(sentMsg.Id, targetUserId, originalQuestion, adminAnswer);
 
                         await rawMessage.AddReactionAsync(new Emoji("✅"));
@@ -179,7 +168,6 @@ public partial class BotWorker : IHostedService
         }
     }
 
-    // 유저가 [답변 확인하기] 버튼을 눌렀을 때 동작하는 핸들러
     private async Task HandleButtonInteractionAsync(SocketMessageComponent component)
     {
         if (component.Data.CustomId.StartsWith("btn_reply_"))
@@ -188,14 +176,14 @@ public partial class BotWorker : IHostedService
 
             if (ReplyCache.TryGet(msgId, out var cacheData))
             {
-                // 본인이 맞는지 검증!
+                // 본인이 맞는지 검증
                 if (component.User.Id != cacheData.TargetUserId)
                 {
                     await component.RespondAsync("❌ 본인이 신청한 문의만 확인할 수 있습니다.", ephemeral: true);
                     return;
                 }
 
-                // 본인이 맞다면 에페머럴(오직 본인 눈에만 보이는) 임베드로 답변 출력!
+                // 본인이 맞다면 에페머럴 답변 출력
                 var replyEmbed = new EmbedBuilder()
                     .WithTitle("🛡️ [고객 센터] 문의 답변")
                     .AddField("📝 내 원본 문의", cacheData.OriginalQuestion, false)
@@ -205,17 +193,19 @@ public partial class BotWorker : IHostedService
                     .WithCurrentTimestamp()
                     .Build();
 
+                // 1. 에페머럴 응답 전달
+                await component.RespondAsync(embed: replyEmbed, ephemeral: true);
+
+                // 2. 답변 확인 후 원본 버튼 안내 메시지 삭제 및 캐시 제거
                 try
                 {
-                    // 메시지 삭제!
                     await component.Message.DeleteAsync();
+                    ReplyCache.Remove(msgId);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "버튼 메시지 삭제 중 권한 또는 네트워크 오류가 발생했습니다.");
                 }
-
-                await component.RespondAsync(embed: replyEmbed, ephemeral: true);
             }
             else
             {
@@ -225,10 +215,10 @@ public partial class BotWorker : IHostedService
     }
 }
 
-// 답변 데이터를 보관할 정적 캐시 클래스 (간단한 메모리 저장용)
+// Thread-safe 캐시 클래스 (ConcurrentDictionary 적용)
 public static class ReplyCache
 {
-    private static readonly Dictionary<ulong, (ulong TargetUserId, string OriginalQuestion, string AdminAnswer)> _cache = new();
+    private static readonly ConcurrentDictionary<ulong, (ulong TargetUserId, string OriginalQuestion, string AdminAnswer)> _cache = new();
 
     public static void Store(ulong messageId, ulong targetUserId, string originalQuestion, string adminAnswer)
     {
@@ -238,5 +228,10 @@ public static class ReplyCache
     public static bool TryGet(ulong messageId, out (ulong TargetUserId, string OriginalQuestion, string AdminAnswer) data)
     {
         return _cache.TryGetValue(messageId, out data);
+    }
+
+    public static void Remove(ulong messageId)
+    {
+        _cache.TryRemove(messageId, out _);
     }
 }
