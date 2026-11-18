@@ -1,7 +1,3 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -10,6 +6,9 @@ using Discord.WebSocket;
 Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
 
 var builder = WebApplication.CreateBuilder(args);
+
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // 2. 파일 감시(reloadOnChange: false) 비활성화 설정
 builder.Configuration.Sources.Clear();

@@ -1,14 +1,10 @@
 using Discord;
 using Discord.Interactions;
 
-public class InquiryModule : InteractionModuleBase<SocketInteractionContext>
+public class InquiryModule(ILogger<InquiryModule> logger) : InteractionModuleBase<SocketInteractionContext>
 {
-    private readonly ILogger<InquiryModule> _logger;
+    private readonly ILogger<InquiryModule> _logger = logger;
 
-    public InquiryModule(ILogger<InquiryModule> logger)
-    {
-        _logger = logger;
-    }
 
     [SlashCommand("문의", "개발자/관리자에게 익명으로 문의나 건의사항을 남깁니다.")]
     public async Task HandleInquiry([Summary("내용", "전달할 문의 내용을 적어주세요.")] string content)
