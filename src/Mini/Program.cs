@@ -2,6 +2,9 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DotNetEnv;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 // Environment Variables
 Env.Load();

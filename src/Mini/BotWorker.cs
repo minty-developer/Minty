@@ -2,6 +2,9 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using System.Reflection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 public class BotWorker : BackgroundService
 {
