@@ -10,7 +10,7 @@
 - [v] Discord Bot Client 구현
 - [v] Discord API 연결 및 인증
 - [ ] Slash Command Handler 구현
-- [ ] Event Handler 구현
+- [v] Event Handler 구현
 - [ ] Permission Manager 구현
 - [ ] Configuration Manager 구현
 - [ ] Logger 구현

@@ -10,6 +10,7 @@ public class BotWorker : BackgroundService
     private readonly IServiceProvider _services;
     private readonly IConfiguration _configuration;
     private readonly ILogger<BotWorker> _logger;
+    private readonly EventHandler _eventHandler;
 
     private bool _commandsRegistered;
 
@@ -18,13 +19,15 @@ public class BotWorker : BackgroundService
         InteractionService interactions,
         IServiceProvider services,
         IConfiguration configuration,
-        ILogger<BotWorker> logger)
+        ILogger<BotWorker> logger,
+        EventHandler eventHandler)
     {
         _client = client;
         _interactions = interactions;
         _services = services;
         _configuration = configuration;
         _logger = logger;
+        _eventHandler = eventHandler;
     }
 
     protected override async Task ExecuteAsync(
@@ -36,6 +39,29 @@ public class BotWorker : BackgroundService
 
         _client.Ready += ReadyAsync;
         _client.InteractionCreated += HandleInteractionAsync;
+
+        // Users
+        _client.UserJoined += _eventHandler.HandleUserJoined;
+        _client.UserLeft += _eventHandler.HandleUserLeft;
+
+        // Message
+        _client.MessageReceived += _eventHandler.HandleMessageReceived;
+        _client.MessageUpdated += _eventHandler.HandleMessageUpdated;
+        _client.MessageDeleted += _eventHandler.HandleMessageDeleted;
+
+        // Reaction
+        _client.ReactionAdded += _eventHandler.HandleReactionAdded;
+        _client.ReactionRemoved += _eventHandler.HandleReactionRemoved;
+
+        // Channel
+        _client.ChannelCreated += _eventHandler.HandleChannelCreated;
+        _client.ChannelDestroyed += _eventHandler.HandleChannelDestroyed;
+        _client.ChannelUpdated += _eventHandler.HandleChannelUpdated;
+
+        // Role
+        _client.RoleCreated += _eventHandler.HandleRoleCreated;
+        _client.RoleDeleted += _eventHandler.HandleRoleDeleted;
+        _client.RoleUpdated += _eventHandler.HandleRoleUpdated;
 
         // Load Interaction Modules
         var assembly = Assembly.GetEntryAssembly()
@@ -135,24 +161,36 @@ public class BotWorker : BackgroundService
         }
     }
 
-    private async Task HandleInteractionAsync(
-        SocketInteraction interaction)
+    private async Task HandleInteractionAsync(SocketInteraction interaction)
     {
         try
         {
-            var context = new SocketInteractionContext(
-                _client,
-                interaction);
+            var context = new SocketInteractionContext(_client, interaction);
 
-            await _interactions.ExecuteCommandAsync(
+            var result = await _interactions.ExecuteCommandAsync(
                 context,
-                _services);
+                _services
+            );
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning(
+                    "Interaction failed: {Error}",
+                    result.ErrorReason
+                );
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Interaction execution failed.");
+            _logger.LogError(ex, "Interaction execution failed.");
+
+            if (!interaction.HasResponded)
+            {
+                await interaction.RespondAsync(
+                    "명령어 실행 중 오류가 발생했습니다.",
+                    ephemeral: true
+                );
+            }
         }
     }
 
@@ -164,6 +202,29 @@ public class BotWorker : BackgroundService
 
         _client.Ready -= ReadyAsync;
         _client.InteractionCreated -= HandleInteractionAsync;
+
+        // Users
+        _client.UserJoined -= _eventHandler.HandleUserJoined;
+        _client.UserLeft -= _eventHandler.HandleUserLeft;
+
+        // Message
+        _client.MessageReceived -= _eventHandler.HandleMessageReceived;
+        _client.MessageUpdated -= _eventHandler.HandleMessageUpdated;
+        _client.MessageDeleted -= _eventHandler.HandleMessageDeleted;
+
+        // Reaction
+        _client.ReactionAdded -= _eventHandler.HandleReactionAdded;
+        _client.ReactionRemoved -= _eventHandler.HandleReactionRemoved;
+
+        // Channel
+        _client.ChannelCreated -= _eventHandler.HandleChannelCreated;
+        _client.ChannelDestroyed -= _eventHandler.HandleChannelDestroyed;
+        _client.ChannelUpdated -= _eventHandler.HandleChannelUpdated;
+
+        // Role
+        _client.RoleCreated -= _eventHandler.HandleRoleCreated;
+        _client.RoleDeleted -= _eventHandler.HandleRoleDeleted;
+        _client.RoleUpdated -= _eventHandler.HandleRoleUpdated;
 
         _client.Log -= LogAsync;
         _interactions.Log -= LogAsync;

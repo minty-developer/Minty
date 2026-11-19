@@ -16,9 +16,14 @@ builder.Configuration
 // Discord Configuration
 builder.Services.AddSingleton(new DiscordSocketConfig
 {
-    GatewayIntents = GatewayIntents.Guilds
-                   | GatewayIntents.GuildMessages
-                   | GatewayIntents.MessageContent,
+    GatewayIntents =
+        GatewayIntents.Guilds |
+        GatewayIntents.GuildMembers |
+        GatewayIntents.GuildMessages |
+        GatewayIntents.DirectMessages |
+        GatewayIntents.GuildMessageReactions |
+        GatewayIntents.DirectMessageReactions |
+        GatewayIntents.MessageContent,
 
     LogLevel = LogSeverity.Info,
     MessageCacheSize = 50
@@ -33,6 +38,9 @@ builder.Services.AddSingleton(provider =>
         provider.GetRequiredService<DiscordSocketClient>()
     )
 );
+
+// Event Handler
+builder.Services.AddSingleton<EventHandler>();
 
 // Background Services
 builder.Services.AddHostedService<BotWorker>();
